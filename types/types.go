@@ -2,7 +2,7 @@ package types
 
 var URL_API = "https://economia.awesomeapi.com.br/json/last/USD-BRL"
 
-type CotacaoDTO struct {
+type CotacaoDataDTO struct {
 	Code       string `json:"code"`
 	CodeIN     string `json:"codein"`
 	Name       string `json:"name"`

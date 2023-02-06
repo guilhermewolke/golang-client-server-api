@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/guilhermewolke/golang-client-server-api/types"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
@@ -25,10 +27,14 @@ func main() {
 
 func CotacaoHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("main.CotacaoHandler - Início do Método")
+	// Primeiro, cria-se o contexto com 200ms para o consumo da API...
+	ctx, cancel := context.WithTimeout(context.Background(), 2000*time.Millisecond)
+	defer cancel()
+
 	// Passos a seguir
 	// 1) Realizar a requisição no serviço externo de cotação de Dolar
 
-	cotacao, err := getCotacao()
+	cotacao, err := getCotacao(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -36,23 +42,24 @@ func CotacaoHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("main.CotacaoHandler - cotacao convertido em objeto: %#v", cotacao)
 
 	// 2) Registrar no banco de dados SQLite
-	// err = putCotacao(cotacao)
+	// Alterando o timeout do contexto para o tempo limite d
+	ctx, _ = context.WithTimeout(context.Background(), 1000*time.Millisecond)
+	lastID, err := putCotacao(ctx, cotacao)
 
-	// if err != nil {
-	// 	panic(err)
-	// }
+	if err != nil {
+		panic(err)
+	}
+
+	log.Printf("main.CotacaoHandler - Último ID inserido: %d", lastID)
 
 	log.Println("main.CotacaoHandler - Fim do Método")
 }
 
-func getCotacao() (map[string]types.CotacaoDTO, error) {
+func getCotacao(c context.Context) (map[string]types.CotacaoDataDTO, error) {
 	log.Printf("main.getCotacao -Início do método")
-	var cotacao map[string]types.CotacaoDTO
+	var cotacao map[string]types.CotacaoDataDTO
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2000*time.Millisecond)
-	defer cancel()
-
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, types.URL_API, nil)
+	request, err := http.NewRequestWithContext(c, http.MethodGet, types.URL_API, nil)
 	if err != nil {
 		return cotacao, err
 	}
@@ -70,11 +77,78 @@ func getCotacao() (map[string]types.CotacaoDTO, error) {
 		return cotacao, err
 	}
 
-	log.Printf("main.getCotacao - body retornado: %#v", string(body))
-
 	if err = json.Unmarshal(body, &cotacao); err != nil {
 		return cotacao, err
 	}
 
 	return cotacao, nil
+}
+
+func putCotacao(c context.Context, cotacao map[string]types.CotacaoDataDTO) (int64, error) {
+	log.Printf("main.putCotacao -Início do método")
+	obj := cotacao["USDBRL"]
+	// Conectar-se ao banco
+	db, err := sql.Open("sqlite3", "cotacao.db")
+	if err != nil {
+		return int64(0), err
+	}
+
+	defer db.Close()
+
+	q := `
+		INSERT INTO
+			cotacoes(
+				code,
+				codein,
+				name,
+				high,
+				low,
+				varbid,
+				pctchange,
+				bid,
+				ask,
+				timestamp,
+				create_date
+			)
+			VALUES (
+				?, 
+				?, 
+				?, 
+				?, 
+				?, 
+				?, 
+				?, 
+				?, 
+				?, 
+				?, 
+				?
+			);
+	`
+
+	result, err := db.Exec(q,
+		obj.Code,
+		obj.CodeIN,
+		obj.Name,
+		obj.High,
+		obj.Low,
+		obj.VarBid,
+		obj.PctChange,
+		obj.BID,
+		obj.Ask,
+		obj.Timestamp,
+		obj.CreateDate,
+	)
+
+	if err != nil {
+		return int64(0), err
+	}
+
+	// Inserir o registro na tabela
+	lastID, err := result.LastInsertId()
+
+	if err != nil {
+		return int64(0), err
+	}
+
+	return lastID, nil
 }
