@@ -28,7 +28,7 @@ func main() {
 func CotacaoHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("main.CotacaoHandler - Início do Método")
 	// Primeiro, cria-se o contexto com 200ms para o consumo da API...
-	ctx, cancel := context.WithTimeout(context.Background(), 2000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
 
 	// Passos a seguir
@@ -43,7 +43,7 @@ func CotacaoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 2) Registrar no banco de dados SQLite
 	// Alterando o timeout do contexto para o tempo limite d
-	ctx, _ = context.WithTimeout(context.Background(), 1000*time.Millisecond)
+	ctx, _ = context.WithTimeout(context.Background(), 10*time.Millisecond)
 	lastID, err := putCotacao(ctx, cotacao)
 
 	if err != nil {

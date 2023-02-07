@@ -15,7 +15,7 @@ import (
 // main Consome o endpoint do server, lê o JSON entregue pelo serviço e escreve o valor em um arquivo
 func main() {
 	log.Printf("(client) main.CotacaoHandler - Início do método")
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:8080/cotacao", nil)
