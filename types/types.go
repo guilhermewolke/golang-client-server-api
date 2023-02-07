@@ -15,3 +15,7 @@ type CotacaoDataDTO struct {
 	Timestamp  string `json:"timestamp"`
 	CreateDate string `json:"create_date"`
 }
+
+type CotacaoResponse struct {
+	BID string `json:"bid"`
+}

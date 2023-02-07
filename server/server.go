@@ -52,6 +52,10 @@ func CotacaoHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("main.CotacaoHandler - Último ID inserido: %d", lastID)
 
+	// 3 Retornando o json de resposta para o client
+	payload := types.CotacaoResponse{BID: cotacao["USDBRL"].BID}
+
+	json.NewEncoder(w).Encode(payload)
 	log.Println("main.CotacaoHandler - Fim do Método")
 }
 
