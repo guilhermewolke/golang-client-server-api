@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -28,7 +30,7 @@ func main() {
 func CotacaoHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("main.CotacaoHandler - Início do Método")
 	// Primeiro, cria-se o contexto com 200ms para o consumo da API...
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 2000*time.Millisecond)
 	defer cancel()
 
 	// Passos a seguir
@@ -36,18 +38,20 @@ func CotacaoHandler(w http.ResponseWriter, r *http.Request) {
 
 	cotacao, err := getCotacao(ctx)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Erro do getCotacao: %v", err))
 	}
 
 	log.Printf("main.CotacaoHandler - cotacao convertido em objeto: %#v", cotacao)
 
 	// 2) Registrar no banco de dados SQLite
-	// Alterando o timeout do contexto para o tempo limite d
-	ctx, _ = context.WithTimeout(context.Background(), 10*time.Millisecond)
+	// Alterando o timeout do contexto para o tempo limite
+	ctx = nil
+	ctx, _ = context.WithTimeout(context.Background(), 10*time.Nanosecond)
+
 	lastID, err := putCotacao(ctx, cotacao)
 
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Erro do put cotacao: %v", err))
 	}
 
 	log.Printf("main.CotacaoHandler - Último ID inserido: %d", lastID)
@@ -128,6 +132,11 @@ func putCotacao(c context.Context, cotacao map[string]types.CotacaoDataDTO) (int
 				?
 			);
 	`
+
+	select {
+	case <-c.Done():
+		return int64(0), errors.New("Timeout do contexto excedido")
+	}
 
 	result, err := db.Exec(q,
 		obj.Code,
